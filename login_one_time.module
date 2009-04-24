@@ -14,6 +14,24 @@ function login_one_time_perm() {
 }
 
 /**
+ * Implementation of hook_user().
+ */
+function login_one_time_user($op, &$edit, &$account, $category = NULL) {
+  switch ($op) {
+    case 'view':
+      if (user_access('send link to login one time')) {
+        $account->content['login_one_time'] = array(
+          '#title' => t('One-time login'),
+          '#type' => 'item',
+          '#value' => login_one_time_button($account),
+          '#weight' => 10,
+        );
+      }
+      break;
+  }
+}
+
+/**
  * Call this function to get the ball rolling.
  */
 function login_one_time_button($account = NULL, $path = NULL) {
@@ -147,7 +165,7 @@ function login_one_time_menu() {
 function login_one_time_mail_text($key, $path = NULL, $language = NULL, $variables = array()) {
   $langcode = isset($language) ? $language->language : NULL;
 
-  if ($admin_setting = variable_get('user_mail_'. $key, FALSE)) {
+  if ($admin_setting = variable_get($key, FALSE)) {
     // An admin setting overrides the default string.
     return strtr($admin_setting, $variables);
   }
