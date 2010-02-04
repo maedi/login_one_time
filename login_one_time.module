@@ -230,7 +230,14 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
   // Check if the user is already logged in. The back button is often the culprit here.
   if ($user->uid) {
     drupal_set_message(t('It is not necessary to use this link to login anymore. You are already logged in.'));
-    drupal_goto();
+
+    $action = login_one_time_get_action_path();
+    if (!empty($action)) {
+      drupal_goto($action);
+    }
+    else {
+      drupal_goto();
+    }
   }
   else {
     // Time out, in seconds, until login URL expires. 24 hours = 86400 seconds.
@@ -251,12 +258,7 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
       }
       else if ($account->uid && $timestamp > $account->login && $timestamp < $current && $hashed_pass == user_pass_rehash($account->pass, $timestamp, $account->login)) {
 
-        $path_array = array();
-        $query_bits = explode("/", $_GET['q']);
-        for ($i = 4; $i < count($query_bits); $i++) {
-           $path_array[] = $query_bits[$i];
-        }
-        $action = implode('/', $path_array);
+        $action = login_one_time_get_action_path();
 
         if ($action) {
           watchdog('user', 'User %name used one-time login link at time %timestamp.', array('%name' => $account->name, '%timestamp' => $timestamp));
@@ -281,6 +283,18 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
       drupal_access_denied();
     }
   }
+}
+
+/**
+ * Get the action path for redirect.
+ */
+function login_one_time_get_action_path() {
+   $path_array = array();
+   $query_bits = explode("/", $_GET['q']);
+   for ($i = 4; $i < count($query_bits); $i++) {
+     $path_array[] = $query_bits[$i];
+   }
+   return implode('/', $path_array);
 }
 
 /**
