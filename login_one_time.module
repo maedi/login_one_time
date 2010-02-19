@@ -62,7 +62,7 @@ function login_one_time_settings() {
     '#default_value' => variable_get('login_one_time_expiry', ''),
     '#size' => PHP_INT_SIZE,
     '#maxlength' => PHP_INT_SIZE,
-    '#description' => t("How long, in minutes, before the link expires.  Leave blank to default to two weeks (1,209,600 minutes)."),
+    '#description' => t("How long, in seconds, before the link expires.  Leave blank to default to two weeks (1,209,600 seconds)."),
   );
   return system_settings_form($form);
 }
