@@ -24,7 +24,8 @@ INSTALLATION
 
 CONFIGURATION
 -------------
-You can configure the one-time login email template on the user settings page.
+Configuration is at: User management -> Login one time 
+(admin/user/login_one_time)
 
 
 USAGE
