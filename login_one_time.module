@@ -359,3 +359,28 @@ function login_one_time_mail_notify($op, $account, $path, $language = NULL) {
   $mail = drupal_mail('login_one_time', $op, $account->mail, $language, $params);
   return empty($mail) ? NULL : $mail['result'];
 }
+
+/**
+ * Implementation of hook_user_operations().
+ */
+function login_one_time_user_operations() {
+  $operations = array(
+    'login_one_time_bulk_send_mail' => array(
+      'label' => t('Send one-time login link to the selected users'),
+      'callback' => 'login_one_time_bulk_send_mail',
+    ),
+  );
+  return $operations;
+}
+
+/**
+ * Callback function for hook_user_operations().
+ */
+function login_one_time_bulk_send_mail($accounts) {
+  foreach ($accounts as $uid) {
+    $account = user_load(array('uid' => (int)$uid));
+    if ($account !== FALSE) {
+      login_one_time_send_mail($account);
+    }
+  }
+}
