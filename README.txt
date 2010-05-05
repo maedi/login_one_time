@@ -1,3 +1,7 @@
+// $Id$
+
+Login one time README
+
 CONTENTS OF THIS FILE
 ----------------------
 
