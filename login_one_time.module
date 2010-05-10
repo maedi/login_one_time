@@ -376,11 +376,11 @@ function login_one_time_user_operations() {
 /**
  * Callback function for hook_user_operations().
  */
-function login_one_time_bulk_send_mail($accounts) {
+function login_one_time_bulk_send_mail($accounts, $path = NULL) {
   foreach ($accounts as $uid) {
     $account = user_load(array('uid' => (int)$uid));
     if ($account !== FALSE) {
-      login_one_time_send_mail($account);
+      login_one_time_send_mail($account, $path);
     }
   }
 }
