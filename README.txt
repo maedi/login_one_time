@@ -60,7 +60,7 @@ you can add an extra parameter $path like so:
   print login_one_time_button($account, $path);
 
 
-If you would like to skip the button and just call a function that send the
+If you would like to skip the button and just call a function that sends the
 email straight away ($path optional):
 
   login_one_time_send_mail($account, $path);
