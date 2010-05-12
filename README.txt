@@ -36,37 +36,72 @@ User management > User settings (admin/user/settings)
 
 USAGE
 -----
-There are two inbuilt ways to send one time login links:
+There are several inbuilt ways to send one time login links:
 
-1) Pressing the "Send one-time login link [...]" button in a user profile.
+- Pressing the "Send login one time link [...]" button in a user profile.
 
-2) Using the operations on the user administration page, or with the module
-   'Views Bulk Operations'. http://drupal.org/project/views_bulk_operations
+- Using the operations on the user administration page, or with the module
+  'Views Bulk Operations': http://drupal.org/project/views_bulk_operations.
+  Embedding such a view somewhere can allow you to direct users to the page
+  where the view is embedded.  Check the View Reference project page for some
+  ideas on how to embed views: http://drupal.org/project/viewreference.
+
+- Configure the login one time block, and use it to select a user and send the
+  link.
 
 
 API USAGE
 ---------
+Here are some function definitions and their descriptions to point you in the
+right direction.
 
-To output a button, that when pressed sends an email to the email address of
-the supplied user $account giving them a one-time login link to the page that 
-the code was called from, use this PHP:
+login_one_time_button($account = NULL, $path = NULL, $select = FALSE)
+  Get a login one time form.
+  $account
+    If supplied force the email to go to this account, if not supplied will
+    display a select element with all active users.
+  $path
+    If supplied will force the emailed link to redirect to this path. If not
+    supplied will use default setting, or fallback to the URL of the page this
+    code is called from.  Supply empty string to prompt for selection.
+  $select
+    If TRUE will display a select element to choose from configured paths, the
+    default choice will come from $path or be calculated the same way, or if 
+    empty string supplied it will prompt for selection.
+  Return value
+    The HTML string of the form, for use in output.
 
-  print login_one_time_button($account);
+login_one_time_send_mail($account, $path = NULL)
+  Send the login one time link to a user via email.
+  $account
+    The loaded account object for the user to whom the email will be sent.
+  $path
+    If supplied will force the emailed link to redirect to this path. If not
+    supplied will use default setting, or fallback to the URL of the page this
+    code is called from.
+  Return value
+    The return value from drupal_mail_send(), if ends up being called.
 
+login_one_time_bulk_send_mail($accounts, $path = NULL)
+  Bulk send login one time links to users via email.
+  $account
+    An array of user IDs.
+  $path
+    If supplied will force the emailed link to redirect to this path. If not
+    supplied will use default setting, or fallback to the URL of the page this
+    code is called from.
+  Return value
+    Multidimensional array of return data including user IDs and responses
+    from login_one_time_send_mail.
 
-If you would like them to start on a particular page, such as the front page,
-you can add an extra parameter $path like so:
+These are some hooks you can implement to modify login one time's behaviour.
 
-  print login_one_time_button($account, $path);
+hook_login_one_time_path_options_alter(&$options)
+  Alter the list of path options that the module uses in various places.  Use
+  this instead of a hook_form_alter approach to affect all forms and lists 
+  with this data.
 
-
-If you would like to skip the button and just call a function that sends the
-email straight away ($path optional):
-
-  login_one_time_send_mail($account, $path);
-
-
-You can also easily do a mass send of links. In this case, $accounts is an
-array of User IDs ($path optional):
-
-  login_one_time_bulk_send_mail($accounts, $path);
+hook_login_one_time_user_options_alter(&$options)
+  Alter the list of user options that the module uses in various places.  Use
+  this instead of a hook_form_alter approach to affect all forms and lists 
+  with this data.
