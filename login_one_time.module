@@ -35,7 +35,21 @@ function login_one_time_menu() {
     'description' => 'Configure the settings for Login one time.',
   );
 
+  $items['login_one_time_autocomplete_users'] = array(
+    'title' => 'Login one time autocomplete users',
+    'page callback' => 'login_one_time_autocomplete_users',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
   return $items;
+}
+
+/**
+ * Retrieve a pipe delimited string of autocomplete suggestions.
+ */
+function login_one_time_autocomplete_users($autocomplete = '') {
+  drupal_json(login_one_time_user_options($autocomplete));
 }
 
 /**
@@ -54,6 +68,17 @@ function login_one_time_settings() {
     '#maxlength' => strlen(PHP_INT_MAX),
     '#description' => t("How long, in seconds, before links expire.  Leave blank to default to two weeks (1,209,600 seconds)."),
   );
+  $form['global']['login_one_time_user_widget'] = array(
+    '#type' => 'radios', 
+    '#title' => t('User selection widget'), 
+    '#default_value' => variable_get('login_one_time_user_widget', 'autocomplete'), 
+    '#options' => array(
+      'autocomplete' => t('Autocomplete textfield'),
+      'select' => t('Select list'), 
+    ),
+    '#description' => t("If using a <em>user selection</em> widget, this configures the form element type.  For smaller sites a select list could be easier to use."),
+  );
+
   $form['mail'] = array(
     '#type' => 'fieldset',
     '#title' => t("E-mail settings"),
@@ -151,8 +176,8 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
 /**
  * Get a login one time form.
  *
- * @param $account
- *   If supplied force the email to go to this account, if not supplied will
+ * @param $username
+ *   If supplied force the email to go to this user, if not supplied will
  *   display a select element with all active users.
  * @param $path
  *   If supplied will force the emailed link to redirect to this path. If not
@@ -165,9 +190,13 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
  * @return
  *   The HTML string of the form, for use in output.
  */
-function login_one_time_button($account = NULL, $path = NULL, $select = FALSE) {
+function login_one_time_button($username = NULL, $path = NULL, $select = FALSE) {
   if (user_access('send link to login one time')) {
-    return drupal_get_form('login_one_time_button_form', $account, $path, $select);
+    if (is_object($username) && isset($account->name)) {
+      // Woops, they've supplied an $account!
+      $username = $username->name;
+    }
+    return drupal_get_form('login_one_time_button_form', $username, $path, $select);
   }
   return NULL;
 }
@@ -175,15 +204,15 @@ function login_one_time_button($account = NULL, $path = NULL, $select = FALSE) {
 /**
  * Form to send a one-time login link
  */
-function login_one_time_button_form($form_state, $account = NULL, $path = NULL, $select = FALSE) {
+function login_one_time_button_form($form_state, $username = NULL, $path = NULL, $select = FALSE) {
   $form = array();
   $form['#redirect'] = FALSE;
-  if ($account) {
+  if ($username) {
     $form['account'] = array(
       '#type' => 'value', 
-      '#value' => $account->uid,
+      '#value' => $username,
     );
-    $button_text = t('Send login one time link to !username', array('!username' => $account->name));
+    $button_text = t('Send login one time link to !username', array('!username' => $username));
   }
   else {
     $form['account'] = login_one_time_users_widget();
@@ -215,7 +244,7 @@ function login_one_time_select_widget($path = NULL, $title = NULL) {
   // Set a default path if $path not given.
   if (is_null($path)) {
     $path = variable_get('login_one_time_path_default', NULL);
-    if (!$path) {
+    if (is_null($path)) {
       $path = 'login_one_time[current]';
     }
   }
@@ -234,15 +263,26 @@ function login_one_time_select_widget($path = NULL, $title = NULL) {
 /**
  * Generate the users widget options.
  */
-function login_one_time_users_widget($uid = NULL, $title = NULL) {
+function login_one_time_users_widget($username = NULL, $title = NULL) {
   $accounts = array();
-  $form = array(
-    '#type' => 'select',
-    '#default_value' => $uid,
-    '#options' => array('' => t("- Choose a user -")) + login_one_time_user_options(),
-    '#required' => TRUE,
-  );
-
+  if (variable_get('login_one_time_user_widget', 'autocomplete') == 'autocomplete') {
+    $form = array(
+      '#type' => 'textfield', 
+      '#default_value' => $username,
+      '#size' => 30, 
+      '#maxlength' => 128, 
+      '#required' => TRUE,
+      '#autocomplete_path' => 'login_one_time_autocomplete_users',
+    );
+  }
+  else {
+    $form = array(
+      '#type' => 'select',
+      '#default_value' => $username,
+      '#options' => array('' => t("- Choose a user -")) + login_one_time_user_options(),
+      '#required' => TRUE,
+    );
+  }
   if ($title) {
     $form['#title'] = $title;
   }
@@ -300,12 +340,19 @@ function login_one_time_path_options($path = NULL) {
 /**
  * Build the list of user select widget options.
  */
-function login_one_time_user_options() {
+function login_one_time_user_options($autocomplete = NULL) {
   $options = array();
 
-  $result = db_query('SELECT uid, name FROM {users} WHERE status != 0 ORDER BY name');
-  while ($account = db_fetch_array($result)) {
-    $options[$account['uid']] = $account['name'];
+  $where = '';
+  $args = array();
+  if ($autocomplete) {
+    $where = " AND name LIKE '%%%s%'";
+    $args[] = $autocomplete;
+  }
+
+  $result = db_query('SELECT name FROM {users} WHERE status != 0'. $where .' ORDER BY name', $args);
+  while ($row = db_fetch_array($result)) {
+    $options[$row['name']] = $row['name'];
   }
 
   // Allow modules to modify this list correctly.
@@ -319,7 +366,7 @@ function login_one_time_user_options() {
  */
 function login_one_time_button_form_submit($form, &$form_state) {
   $values = &$form_state['values'];
-  $account = user_load($values['account']);
+  $account = user_load(array('name' => $values['account']));
   $result = login_one_time_send_mail($account, $values['path']);
   if ($result) {
     $form_state['storage']['done'] = TRUE;

@@ -36,7 +36,7 @@ User management > User settings (admin/user/settings)
 
 USAGE
 -----
-There are several inbuilt ways to send one time login links:
+There are several ways to send one time login links:
 
 - Pressing the "Send login one time link [...]" button in a user profile.
 
@@ -47,18 +47,21 @@ There are several inbuilt ways to send one time login links:
   ideas on how to embed views: http://drupal.org/project/viewreference.
 
 - Configure the login one time block, and use it to select a user and send the
-  link.
+  link.  You can easily use this block in nodes as a CCK field using the Block
+  Reference module: http://drupal.org/project/blockreference.
 
+- Using PHP, print out a button somewhere (e.g. in a node template) or directly
+  send the emails using available functions as described below in API USAGE.
 
 API USAGE
 ---------
 Here are some function definitions and their descriptions to point you in the
 right direction.
 
-login_one_time_button($account = NULL, $path = NULL, $select = FALSE)
+login_one_time_button($username = NULL, $path = NULL, $select = FALSE)
   Get a login one time form.
-  $account
-    If supplied force the email to go to this account, if not supplied will
+  $username
+    If supplied force the email to go to this user, if not supplied will
     display a select element with all active users.
   $path
     If supplied will force the emailed link to redirect to this path. If not
