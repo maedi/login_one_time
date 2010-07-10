@@ -165,7 +165,7 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
         $account->content['login_one_time'] = array(
           '#title' => t('Login one time'),
           '#type' => 'item',
-          '#value' => login_one_time_button($account, NULL, $select),
+          '#value' => login_one_time_button($account->name, NULL, $select),
           '#weight' => 10,
         );
       }
@@ -192,7 +192,7 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
  */
 function login_one_time_button($username = NULL, $path = NULL, $select = FALSE) {
   if (user_access('send link to login one time')) {
-    if (is_object($username) && isset($account->name)) {
+    if (is_object($username) && isset($username->name)) {
       // Woops, they've supplied an $account!
       $username = $username->name;
     }
