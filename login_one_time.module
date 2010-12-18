@@ -69,12 +69,12 @@ function login_one_time_settings() {
     '#description' => t("How long, in seconds, before links expire.  Leave blank to default to two weeks (1,209,600 seconds)."),
   );
   $form['global']['login_one_time_user_widget'] = array(
-    '#type' => 'radios', 
-    '#title' => t('User selection widget'), 
-    '#default_value' => variable_get('login_one_time_user_widget', 'autocomplete'), 
+    '#type' => 'radios',
+    '#title' => t('User selection widget'),
+    '#default_value' => variable_get('login_one_time_user_widget', 'autocomplete'),
     '#options' => array(
       'autocomplete' => t('Autocomplete textfield'),
-      'select' => t('Select list'), 
+      'select' => t('Select list'),
     ),
     '#description' => t("If using a <em>user selection</em> widget, this configures the form element type.  For smaller sites a select list could be easier to use."),
   );
@@ -185,7 +185,7 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
  *   code is called from.  Supply empty string to prompt for selection.
  * @param $select
  *   If TRUE will display a select element to choose from configured paths, the
- *   default choice will come from $path or be calculated the same way, or if 
+ *   default choice will come from $path or be calculated the same way, or if
  *   empty string supplied it will prompt for selection.
  * @return
  *   The HTML string of the form, for use in output.
@@ -209,7 +209,7 @@ function login_one_time_button_form($form_state, $username = NULL, $path = NULL,
   $form['#redirect'] = FALSE;
   if ($username) {
     $form['account'] = array(
-      '#type' => 'value', 
+      '#type' => 'value',
       '#value' => $username,
     );
     $button_text = t('Send login one time link to !username', array('!username' => $username));
@@ -267,10 +267,10 @@ function login_one_time_users_widget($username = NULL, $title = NULL) {
   $accounts = array();
   if (variable_get('login_one_time_user_widget', 'autocomplete') == 'autocomplete') {
     $form = array(
-      '#type' => 'textfield', 
+      '#type' => 'textfield',
       '#default_value' => $username,
-      '#size' => 30, 
-      '#maxlength' => 128, 
+      '#size' => 30,
+      '#maxlength' => 128,
       '#required' => TRUE,
       '#autocomplete_path' => 'login_one_time_autocomplete_users',
     );
@@ -388,7 +388,7 @@ function login_one_time_button_form_submit($form, &$form_state) {
  *   code is called from.
  * @return
  *   The return value from drupal_mail_send(), if ends up being called.
- *   
+ *
  */
 function login_one_time_send_mail($account, $path = NULL) {
   return login_one_time_mail_notify('login_one_time', $account, $path);
@@ -415,7 +415,7 @@ function login_one_time_get_link($account, $path = NULL) {
   }
 
   $timestamp = time();
-  return url("login_one_time/" . $account->uid . "/" . $timestamp . "/". 
+  return url("login_one_time/" . $account->uid . "/" . $timestamp . "/".
     login_one_time_get_hash($account->pass, $timestamp, $account->login) . "/" . $path, array('absolute' => TRUE));
 }
 
@@ -680,7 +680,7 @@ function login_one_time_block($op = 'list', $delta = 0, $edit = array()) {
   }
   else if ($op == 'configure' && $delta == 0) {
     $form['default'] = login_one_time_select_widget(
-      variable_get('login_one_time_block_default', NULL), 
+      variable_get('login_one_time_block_default', NULL),
       t("Default path")
     );
     $form['default']['#required'] = FALSE;
@@ -708,5 +708,25 @@ function login_one_time_block($op = 'list', $delta = 0, $edit = array()) {
         break;
     }
     return $block;
+  }
+}
+
+/**
+ * Implementation of hook_token_values().
+ */
+function login_one_time_token_values($type, $object = NULL) {
+  if ($type == 'user') {
+    $tokens['login-one-time'] = login_one_time_get_link($object);
+    return $tokens;
+  }
+}
+
+/**
+ * Implementation of hook_token_list().
+ */
+function login_one_time_token_list($type = 'all') {
+  if ($type == 'user' || $type == 'all') {
+    $tokens['login-one-time'] = t('Login one time link (Default path)');
+    return $tokens;
   }
 }
