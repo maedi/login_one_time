@@ -716,7 +716,7 @@ function login_one_time_block($op = 'list', $delta = 0, $edit = array()) {
  */
 function login_one_time_token_values($type, $object = NULL) {
   if ($type == 'user') {
-    $tokens['login-one-time'] = login_one_time_get_link($object);
+    $tokens['user']['login-one-time'] = login_one_time_get_link($object);
     return $tokens;
   }
 }
@@ -726,7 +726,7 @@ function login_one_time_token_values($type, $object = NULL) {
  */
 function login_one_time_token_list($type = 'all') {
   if ($type == 'user' || $type == 'all') {
-    $tokens['login-one-time'] = t('Login one time link (Default path)');
+    $tokens['user']['login-one-time'] = t('Login one time link (Default path)');
     return $tokens;
   }
 }
