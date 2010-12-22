@@ -3,7 +3,7 @@
 
 /**
  * @file
- * The Login one time module
+ * The Login one time module.
  */
 
 /**
@@ -150,7 +150,12 @@ function login_one_time_settings() {
     '#description' => t("Will only show when the button is shown as well."),
     '#default_value' => variable_get('login_one_time_user_select', FALSE),
   );
-
+  $form['user']['login_one_time_user_set_mail'] = array(
+    '#type' => 'checkbox',
+    '#title' => t("Show <em>email override</em> widget."),
+    '#description' => t("To send to an email address other than the account email.  Will only show when the button is shown as well."),
+    '#default_value' => variable_get('login_one_time_user_set_mail', FALSE),
+  );
   return system_settings_form($form);
 }
 
@@ -161,11 +166,12 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
   switch ($op) {
     case 'view':
       if (user_access('send link to login one time') && variable_get('login_one_time_user_view', TRUE)) {
-        $select = variable_get('login_one_time_user_select', TRUE);
+        $select = variable_get('login_one_time_user_select', FALSE);
+        $set_mail = variable_get('login_one_time_user_set_mail', FALSE);
         $account->content['login_one_time'] = array(
           '#title' => t('Login one time'),
           '#type' => 'item',
-          '#value' => login_one_time_button($account->name, NULL, $select),
+          '#value' => login_one_time_button($account->name, NULL, $select, $set_mail),
           '#weight' => 10,
         );
       }
@@ -187,16 +193,18 @@ function login_one_time_user($op, &$edit, &$account, $category = NULL) {
  *   If TRUE will display a select element to choose from configured paths, the
  *   default choice will come from $path or be calculated the same way, or if
  *   empty string supplied it will prompt for selection.
+ * @param $set_mail
+ *   If TRUE shows textbox to override the recipient email address.
  * @return
  *   The HTML string of the form, for use in output.
  */
-function login_one_time_button($username = NULL, $path = NULL, $select = FALSE) {
+function login_one_time_button($username = NULL, $path = NULL, $select = FALSE, $set_mail = FALSE) {
   if (user_access('send link to login one time')) {
     if (is_object($username) && isset($username->name)) {
       // Woops, they've supplied an $account!
       $username = $username->name;
     }
-    return drupal_get_form('login_one_time_button_form', $username, $path, $select);
+    return drupal_get_form('login_one_time_button_form', $username, $path, $select, $set_mail);
   }
   return NULL;
 }
@@ -204,7 +212,7 @@ function login_one_time_button($username = NULL, $path = NULL, $select = FALSE) 
 /**
  * Form to send a one-time login link
  */
-function login_one_time_button_form($form_state, $username = NULL, $path = NULL, $select = FALSE) {
+function login_one_time_button_form($form_state, $username = NULL, $path = NULL, $select = FALSE, $set_mail = FALSE) {
   $form = array();
   $form['#redirect'] = FALSE;
   if ($username) {
@@ -226,6 +234,12 @@ function login_one_time_button_form($form_state, $username = NULL, $path = NULL,
        '#type' => 'value',
        '#value' => $path,
      );
+  }
+  if ($set_mail) {
+    $form['set_mail'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Email override'),
+    );
   }
   $form['submit'] = array(
     '#type' => 'submit',
@@ -362,12 +376,24 @@ function login_one_time_user_options($autocomplete = NULL) {
 }
 
 /**
- * Submit function for the form to send a one-time login link
+ * Validate function for the form to send a one-time login link.
+ */
+function login_one_time_button_form_validate($form, &$form_state) {
+  if (!empty($form_state['values']['set_mail'])) {
+    if (!valid_email_address($form_state['values']['set_mail'])) {
+      form_set_error('set_mail', t('Invalid email address.'));
+    }
+  }
+}
+
+/**
+ * Submit function for the form to send a one-time login link.
  */
 function login_one_time_button_form_submit($form, &$form_state) {
   $values = &$form_state['values'];
   $account = user_load(array('name' => $values['account']));
-  $result = login_one_time_send_mail($account, $values['path']);
+  $set_mail = !empty($values['set_mail']) ? $values['set_mail'] : NULL;
+  $result = login_one_time_send_mail($account, $values['path'], $set_mail);
   if ($result) {
     $form_state['storage']['done'] = TRUE;
     drupal_set_message(t("A one-time login link has been sent to !username.", array('!username' => $account->name)));
@@ -386,12 +412,14 @@ function login_one_time_button_form_submit($form, &$form_state) {
  *   If supplied will force the emailed link to redirect to this path. If not
  *   supplied will use default setting, or fallback to the URL of the page this
  *   code is called from.
+ * @param $email
+ *   If supplied will override the account email address.
  * @return
  *   The return value from drupal_mail_send(), if ends up being called.
  *
  */
-function login_one_time_send_mail($account, $path = NULL) {
-  return login_one_time_mail_notify('login_one_time', $account, $path);
+function login_one_time_send_mail($account, $path = NULL, $email = NULL) {
+  return login_one_time_mail_notify('login_one_time', $account, $path, $email);
 }
 
 /**
@@ -611,16 +639,21 @@ function login_one_time_get_action_path() {
  * @param $account
  *  The user object of the account being notified.  Must contain at
  *  least the fields 'uid', 'name', and 'mail'.
+ * @param $path
+ *  The path to send the user to when they click the link.
+ * @param $email
+ *  If supplied will override the email address of the account.
  * @param $language
  *  Optional language to use for the notification, overriding account language.
  * @return
  *  The return value from drupal_mail_send(), if ends up being called.
  */
-function login_one_time_mail_notify($op, $account, $path, $language = NULL) {
+function login_one_time_mail_notify($op, $account, $path, $email = NULL, $language = NULL) {
   $params['account'] = $account;
   $params['path'] = $path;
+  $email = $email ? $email : $account->mail;
   $language = $language ? $language : user_preferred_language($account);
-  $mail = drupal_mail('login_one_time', $op, $account->mail, $language, $params);
+  $mail = drupal_mail('login_one_time', $op, $email, $language, $params);
   return empty($mail) ? NULL : $mail['result'];
 }
 
@@ -690,20 +723,27 @@ function login_one_time_block($op = 'list', $delta = 0, $edit = array()) {
       '#title' => t("Show <em>path selection</em> widget."),
       '#default_value' => variable_get('login_one_time_block_select', FALSE),
     );
+    $form['set_mail'] = array(
+      '#type' => 'checkbox',
+      '#title' => t("Show <em>email override</em> widget."),
+      '#default_value' => variable_get('login_one_time_block_set_mail', FALSE),
+    );
     return $form;
   }
   else if ($op == 'save' && $delta == 0) {
     variable_set('login_one_time_block_default', $edit['default']);
     variable_set('login_one_time_block_select', $edit['select']);
+    variable_set('login_one_time_block_set_mail', $edit['set_mail']);
   }
   else if ($op == 'view') {
     switch($delta) {
       case 0:
         $path = variable_get('login_one_time_block_default', NULL);
         $select = variable_get('login_one_time_block_select', FALSE);
+        $set_mail = variable_get('login_one_time_block_set_mail', FALSE);
         $block = array(
           'subject' => t('Login one time'),
-          'content' => login_one_time_button(NULL, $path, $select),
+          'content' => login_one_time_button(NULL, $path, $select, $set_mail),
         );
         break;
     }
