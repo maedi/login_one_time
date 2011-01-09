@@ -20,18 +20,18 @@ Instructions on http://drupal.org/project/login_one_time.
 
 INSTALLATION
 ------------
-1. Copy login_one_time folder to modules directory.
-2. At admin/build/modules enable the Login One Time module.
-3. Enable permissions at admin/user/permissions.
+1. Copy login_one_time folder to modules directory (usually sites/all/modules).
+2. At admin/modules enable the Login one time module.
+3. Enable permissions at admin/people/permissions.
 
 
 CONFIGURATION
 -------------
 The configuration page for this module is at:
-User management > Login one time (admin/user/login_one_time)
+Configuration > People > Login one time (admin/config/people/login_one_time)
 
 There is also an email template configurable at:
-User management > User settings (admin/user/settings)
+Configuration > People > Account settings (admin/config/people/accounts)
 
 
 USAGE
