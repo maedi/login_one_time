@@ -791,7 +791,7 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
 /**
  * Implements hook_token_info().
  */
-function node_export_token_info() {
+function login_one_time_token_info() {
   return array(
     'tokens' => array(
       'user' => array(
