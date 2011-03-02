@@ -597,6 +597,12 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
         // user_authenticate_finalize() also updates the login timestamp of the
         // user, which invalidates further use of the one-time login link.
         user_authenticate_finalize($form_state['values']);
+
+        // Integrate with the rules module, see login_one_time.rules.inc.
+        if (module_exists('rules')) {
+          rules_invoke_event('login_one_time_used', $user_edit);
+        }
+
         drupal_set_message(t('You have just used your one-time login link.'));
         if (!empty($action)) {
           drupal_goto($action);
