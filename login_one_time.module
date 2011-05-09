@@ -24,8 +24,8 @@ function login_one_time_menu() {
 
   $items['login_one_time/%/%/%'] = array(
     'title' => 'Login one time',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('login_one_time_page', 1, 2, 3),
+    'page callback' => 'login_one_time_page',
+    'page arguments' => array(1, 2, 3),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -446,14 +446,7 @@ function login_one_time_get_link($account, $path = NULL) {
 
   $timestamp = REQUEST_TIME;
   return url("login_one_time/" . $account->uid . "/" . $timestamp . "/" .
-    login_one_time_get_hash($account->pass, $timestamp, $account->login) . "/" . $path, array('absolute' => TRUE));
-}
-
-/**
- * Generate a one-time password hash
- */
-function login_one_time_get_hash($password, $timestamp, $login) {
-  return md5($timestamp . $password . $login);
+    user_pass_rehash($account->pass, $timestamp, $account->login) . "/" . $path, array('absolute' => TRUE));
 }
 
 /**
@@ -554,7 +547,7 @@ function login_one_time_mail_tokens($account, $language, $path = NULL) {
 /**
  * Menu callback; process login one time link and redirect.
  */
-function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
+function login_one_time_page($uid, $timestamp, $hashed_pass) {
   global $user;
 
   // Check if the user is already logged in. The back button is often the culprit here.
@@ -575,7 +568,8 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
     $timeout = variable_get('login_one_time_expiry', 86400*14);
     $current = REQUEST_TIME ;
     // Some redundant checks for extra security ?
-    if ($timestamp < $current && $account = user_load($uid) && $account->status == 1) {
+    $account = user_load($uid);
+    if ($timestamp < $current && isset($account) && $account->status == 1) {
       // Deny one-time login to blocked accounts.
       if (drupal_is_denied('user', $account->name) || drupal_is_denied('mail', $account->mail)) {
         drupal_set_message(t('You have tried to use a one-time login for an account which has been blocked.'), 'error');
@@ -583,7 +577,7 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
       }
 
       // No time out for first time login.
-      if ($account->login && $current - $timestamp > $timeout && $timeout) {
+      if ($timeout && $account->login && $current - $timestamp > $timeout) {
         drupal_set_message(t('You have tried to use a one-time login link that has expired. Please use the log in form to supply your username and password.'));
         drupal_goto('user/login');
       }
@@ -596,7 +590,7 @@ function login_one_time_page(&$form_state, $uid, $timestamp, $hashed_pass) {
         $user = $account;
         // user_authenticate_finalize() also updates the login timestamp of the
         // user, which invalidates further use of the one-time login link.
-        user_authenticate_finalize($form_state['values']);
+        user_login_finalize();
 
         // Integrate with the rules module, see login_one_time.rules.inc.
         if (module_exists('rules')) {
@@ -770,6 +764,7 @@ function login_one_time_block_view($delta = '') {
       'subject' => t('Login one time'),
       'content' => login_one_time_button(NULL, $path, $select, $set_mail),
     );
+    return $block;
   }
 }
 
