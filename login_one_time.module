@@ -445,8 +445,14 @@ function login_one_time_get_link($account, $path = NULL) {
   }
 
   $timestamp = REQUEST_TIME;
-  return url("login_one_time/" . $account->uid . "/" . $timestamp . "/" .
-    user_pass_rehash($account->pass, $timestamp, $account->login) . "/" . $path, array('absolute' => TRUE));
+  return url(
+    "login_one_time/" . $account->uid . "/" . $timestamp . "/" .
+      user_pass_rehash($account->pass, $timestamp, $account->login),
+    array(
+      'query' => array('destination' => $path),
+      'absolute' => TRUE,
+    )
+  );
 }
 
 /**
@@ -623,12 +629,7 @@ function login_one_time_page($uid, $timestamp, $hashed_pass) {
  * Get the action path for redirect.
  */
 function login_one_time_get_action_path() {
-  $path_array = array();
-  $query_bits = explode("/", $_GET['q']);
-  for ($i = 4; $i < count($query_bits); $i++) {
-    $path_array[] = $query_bits[$i];
-  }
-  return implode('/', $path_array);
+  return urlencode($_REQUEST['destination']);
 }
 
 /**
