@@ -13,6 +13,9 @@ function login_one_time_permission() {
     'send link to login one time' => array(
       'title' => t('Send a login one time link'),
     ),
+    'use link to login one time' => array(
+      'title' => t('Use a login one time link'),
+    ),
   );
 }
 
@@ -165,13 +168,22 @@ function login_one_time_settings() {
  * Implements hook_user_view().
  */
 function login_one_time_user_view($account, $view_mode, $langcode) {
-  if (user_access('send link to login one time') && variable_get('login_one_time_user_view', TRUE)) {
+  if (
+    user_access('use link to login one time', $account) &&
+    user_access('send link to login one time') &&
+    variable_get('login_one_time_user_view', TRUE)
+  ) {
     $select = variable_get('login_one_time_user_select', FALSE);
     $set_mail = variable_get('login_one_time_user_set_mail', FALSE);
     $account->content['login_one_time'] = array(
       '#title' => t('Login one time'),
       '#type' => 'item',
-      '#markup' => login_one_time_button($account->name, NULL, $select, $set_mail),
+      '#markup' => login_one_time_button(
+        $account->name,
+        NULL,
+        $select,
+        $set_mail
+      ),
     );
   }
 }
@@ -181,7 +193,9 @@ function login_one_time_user_view($account, $view_mode, $langcode) {
  *
  * @param $username
  *   If supplied force the email to go to this user, if not supplied will
- *   display a select element with all active users.
+ *   display a select element with all active users. NOTE: It is assumed that
+ *   this user has permission to use login one time links, if they do not the
+ *   button will still appear but the mail will not be sent.
  * @param $path
  *   If supplied will force the emailed link to redirect to this path. If not
  *   supplied will use default setting, or fallback to the URL of the page this
@@ -208,6 +222,24 @@ function login_one_time_button($username = NULL, $path = NULL, $select = FALSE, 
 
 /**
  * Form to send a one-time login link
+ *
+ * @param $form
+ * @param $form_state
+ * @param $username
+ *   If supplied force the email to go to this user, if not supplied will
+ *   display a select element with all active users. NOTE: It is assumed that
+ *   this user has permission to use login one time links, if they do not the
+ *   button will still appear but the mail will not be sent.
+ * @param $path
+ *   If supplied will force the emailed link to redirect to this path. If not
+ *   supplied will use default setting, or fallback to the URL of the page this
+ *   code is called from.  Supply empty string to prompt for selection.
+ * @param $select
+ *   If TRUE will display a select element to choose from configured paths, the
+ *   default choice will come from $path or be calculated the same way, or if
+ *   empty string supplied it will prompt for selection.
+ * @param $set_mail
+ *   If TRUE shows textbox to override the recipient email address.
  */
 function login_one_time_button_form($form, $form_state, $username = NULL, $path = NULL, $select = FALSE, $set_mail = FALSE) {
   $form = array();
@@ -358,16 +390,27 @@ function login_one_time_path_options($path = NULL) {
 function login_one_time_user_options($autocomplete = NULL) {
   $options = array();
 
-  $where = '';
-  $args = array();
-  if ($autocomplete) {
-    $where = " AND name LIKE :autocomplete";
-    $args[':autocomplete'] = '%' . $autocomplete . '.%';
-  }
-
-  $result = db_query('SELECT name FROM {users} WHERE status <> 0' . $where . ' ORDER BY name', $args);
-  foreach ($result as $row) {
-    $options[$row->name] = $row->name;
+  // Only return users with a permitted role id.
+  $permitted_role_ids = array_keys(user_roles(TRUE, 'use link to login one time'));
+  if (!empty($permitted_role_ids)) {
+    $args = array();
+    $args[':rids'] = $permitted_role_ids;
+    $where = '';
+    if ($autocomplete) {
+      $where = " AND u.name LIKE :autocomplete";
+      $args[':autocomplete'] = '%' . $autocomplete . '.%';
+    }
+    $result = db_query(
+      'SELECT u.name AS name FROM {users} u'
+      . ' INNER JOIN {users_roles} ur ON u.uid = ur.uid AND ur.rid IN (:rids)'
+      . ' WHERE u.status <> 0'
+      . $where
+      . ' ORDER BY u.name',
+      $args
+    );
+    foreach ($result as $row) {
+      $options[$row->name] = $row->name;
+    }
   }
 
   // Allow modules to modify this list correctly.
@@ -398,10 +441,18 @@ function login_one_time_button_form_submit($form, &$form_state) {
   $result = login_one_time_send_mail($account, $values['path'], $set_mail);
   if ($result) {
     $form_state['storage']['done'] = TRUE;
-    drupal_set_message(t("A one-time login link has been sent to %username.", array('%username' => format_username($account))));
+    drupal_set_message(
+      t(
+        "A one-time login link has been sent to @username.",
+        array('@username' => format_username($account))
+      )
+    );
   }
   else {
-    drupal_set_message(t("There was a problem sending the one-time login link."), 'error');
+    drupal_set_message(
+      t("There was a problem sending the one-time login link."),
+      'error'
+    );
   }
 }
 
@@ -421,7 +472,18 @@ function login_one_time_button_form_submit($form, &$form_state) {
  *
  */
 function login_one_time_send_mail($account, $path = NULL, $email = NULL) {
-  return login_one_time_mail_notify('login_one_time', $account, $path, $email);
+  if (user_access('use link to login one time', $account)) {
+    return login_one_time_mail_notify('login_one_time', $account, $path, $email);
+  }
+  else {
+    drupal_set_message(
+      t(
+        '@username is not permitted to use login one time links.  Mail not sent to this user.',
+        array('@username' => format_username($account))
+      ),
+      'warning'
+    );
+  }
 }
 
 /**
@@ -458,29 +520,27 @@ function login_one_time_get_link($account, $path = NULL) {
 /**
  * Create email settings as part of user admin settings
  */
-function login_one_time_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == 'user_admin_settings') {
-    $email_token_help = t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !mailto, !date, !login_uri, !edit_uri, !login_url.';
-    $form['email']['login_one_time'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Login one time e-mail'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#description' => t('Customize login one time e-mail messages sent to users.') . ' ' . $email_token_help,
-    );
-    $form['email']['login_one_time']['login_one_time_subject'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Subject'),
-      '#default_value' => login_one_time_mail_text('login_one_time_subject'),
-      '#maxlength' => 180,
-    );
-    $form['email']['login_one_time']['login_one_time_body'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Body'),
-      '#default_value' => login_one_time_mail_text('login_one_time_body'),
-      '#rows' => 12,
-    );
-  }
+function login_one_time_form_user_admin_settings_alter(&$form, &$form_state) {
+  $email_token_help = t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !mailto, !date, !login_uri, !edit_uri, !login_url.';
+  $form['email']['login_one_time'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Login one time e-mail'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#description' => t('Customize login one time e-mail messages sent to users.') . ' ' . $email_token_help,
+  );
+  $form['email']['login_one_time']['login_one_time_subject'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Subject'),
+    '#default_value' => login_one_time_mail_text('login_one_time_subject'),
+    '#maxlength' => 180,
+  );
+  $form['email']['login_one_time']['login_one_time_body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Body'),
+    '#default_value' => login_one_time_mail_text('login_one_time_body'),
+    '#rows' => 12,
+  );
 }
 
 /**
@@ -579,6 +639,12 @@ function login_one_time_page($uid, $timestamp, $hashed_pass) {
       // Deny one-time login to blocked accounts.
       if (drupal_is_denied('user', $account->name) || drupal_is_denied('mail', $account->mail)) {
         drupal_set_message(t('You have tried to use a one-time login for an account which has been blocked.'), 'error');
+        drupal_goto("<front>");
+      }
+
+      // Deny one-time login to accounts without permission
+      if (!user_access('use link to login one time', $account)) {
+        drupal_set_message(t('You have tried to use a one-time login for an account which is no longer permitted to use one-time login links.'), 'error');
         drupal_goto("<front>");
       }
 
@@ -702,6 +768,9 @@ function login_one_time_bulk_send_mail($accounts, $path = NULL) {
         'response' => login_one_time_send_mail($account, $path),
       );
     }
+    else {
+      drupal_set_message(t('There was a problem loading account %uid', array('%uid' => $uid)));
+    }
   }
   return $array;
 }
@@ -803,4 +872,23 @@ function login_one_time_token_info() {
       ),
     ),
   );
+}
+
+/**
+ * Set all user roles to have the permission to use login one time links.
+ *
+ * @return
+ *   TRUE if operation was performed, FALSE if it was not needed.
+ */
+function login_one_time_force_permissions() {
+  $permitted_role_ids = array_keys(user_roles(TRUE, 'use link to login one time'));
+  // Only do this if nobody has been given the permission yet.
+  if (empty($permitted_role_ids)) {
+    $role_ids = array_keys(user_roles(TRUE));
+    foreach ($role_ids as $rid) {
+      user_role_change_permissions($rid, array('use link to login one time' => TRUE));
+    }
+    return TRUE;
+  }
+  return FALSE;
 }

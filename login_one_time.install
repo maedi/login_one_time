@@ -23,3 +23,23 @@ function login_one_time_uninstall() {
   variable_del('login_one_time_user_set_mail');
   variable_del('login_one_time_block_set_mail');
 }
+
+/**
+ * Implements hook_install().
+ */
+function login_one_time_install() {
+  login_one_time_force_permissions();
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Set all user roles to have the permission to use login one time links.
+ *
+ * @see hook_update_N()
+ */
+function login_one_time_update_7200() {
+  if (login_one_time_force_permissions()) {
+    return 'Set all user roles to have the permission to use login one time links.';
+  }
+}
