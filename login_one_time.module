@@ -772,7 +772,7 @@ function login_one_time_bulk_send_mail($accounts, $path = NULL) {
       drupal_set_message(t('There was a problem loading account %uid', array('%uid' => $uid)));
     }
   }
-  return $array;
+  return $return;
 }
 
 /**
