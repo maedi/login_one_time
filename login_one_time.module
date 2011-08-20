@@ -55,7 +55,7 @@ function login_one_time_menu() {
  * Retrieve a pipe delimited string of autocomplete suggestions.
  */
 function login_one_time_autocomplete_users($autocomplete = '') {
-  drupal_json(login_one_time_user_options($autocomplete));
+  drupal_json_output(login_one_time_user_options($autocomplete));
 }
 
 /**
@@ -249,7 +249,8 @@ function login_one_time_button_form($form, $form_state, $username = NULL, $path 
       '#type' => 'value',
       '#value' => $username,
     );
-    $button_text = t('Send login one time link to !username', array('!username' => $username));
+    $account = user_load_by_name($username);
+    $button_text = t('Send login one time link to @username', array('@username' => format_username($account)));
   }
   else {
     $form['account'] = login_one_time_users_widget();
