@@ -6,7 +6,7 @@
  * @ingroup rules
  */
 
-function login_one_time_rules_rules_event_info() {
+function login_one_time_rules_event_info() {
   return array(
     'login_one_time_used' => array(
       'label' => t('When the user has used their one time login.'),
