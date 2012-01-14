@@ -107,3 +107,6 @@ hook_login_one_time_user_options_alter(&$options)
   Alter the list of user options that the module uses in various places.  Use
   this instead of a hook_form_alter approach to affect all forms and lists 
   with this data.
+
+hook_login_one_time_used($user) 
+  Invoked when a user successfully uses a login_one_time link.
