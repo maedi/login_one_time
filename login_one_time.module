@@ -644,7 +644,10 @@ function login_one_time_page($uid, $timestamp, $hashed_pass) {
   }
   else {
     // Time out, in seconds, until login URL expires. 24 hours = 86400 seconds.
-    $timeout = variable_get('login_one_time_expiry', 86400*14);
+    $timeout = variable_get('login_one_time_expiry', '');
+    if (!$timeout) {
+      $timeout = 86400 * 14;
+    }
     $current = REQUEST_TIME ;
     // Some redundant checks for extra security ?
     $account = user_load($uid);
