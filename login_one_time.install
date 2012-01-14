@@ -13,6 +13,7 @@ function login_one_time_uninstall() {
   variable_del('login_one_time_user_widget');
   variable_del('login_one_time_path_front');
   variable_del('login_one_time_path_user');
+  variable_del('login_one_time_path_user_edit');
   variable_del('login_one_time_path_current');
   variable_del('login_one_time_path_custom');
   variable_del('login_one_time_path_default');
