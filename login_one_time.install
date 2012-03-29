@@ -23,6 +23,8 @@ function login_one_time_uninstall() {
   variable_del('login_one_time_block_select');
   variable_del('login_one_time_user_set_mail');
   variable_del('login_one_time_block_set_mail');
+  variable_del('login_one_time_body');
+  variable_del('login_one_time_subject');
 }
 
 /**
