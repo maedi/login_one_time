@@ -539,21 +539,24 @@ function login_one_time_get_link($account, $path = NULL) {
  * Create email settings as part of user admin settings
  */
 function login_one_time_form_user_admin_settings_alter(&$form, &$form_state) {
-  $email_token_help = t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !mailto, !date, !login_uri, !edit_uri, !login_url.';
-  $form['email']['login_one_time'] = array(
+  //$email_token_help = t('Available variables are:') . ' !username, !site, !password, !uri, !uri_brief, !mailto, !date, !login_uri, !edit_uri, !login_url.';
+  $email_token_help = t('Available variables are:') . ' [site:name], [site:url], [user:name], [user:mail], [site:login-url], [site:url-brief], [user:edit-url], <strike>[user:one-time-login-url]</strike>, <strong>[user:login-one-time]</strong>, [user:cancel-url].';
+
+  $form['email_login_one_time'] = array(
     '#type' => 'fieldset',
     '#title' => t('Login one time e-mail'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
     '#description' => t('Customize login one time e-mail messages sent to users.') . ' ' . $email_token_help,
+    '#group' => 'email',
   );
-  $form['email']['login_one_time']['login_one_time_subject'] = array(
+  $form['email_login_one_time']['login_one_time_subject'] = array(
     '#type' => 'textfield',
     '#title' => t('Subject'),
     '#default_value' => login_one_time_mail_text('login_one_time_subject'),
     '#maxlength' => 180,
   );
-  $form['email']['login_one_time']['login_one_time_body'] = array(
+  $form['email_login_one_time']['login_one_time_body'] = array(
     '#type' => 'textarea',
     '#title' => t('Body'),
     '#default_value' => login_one_time_mail_text('login_one_time_body'),
@@ -580,9 +583,9 @@ function login_one_time_mail_text($key, $path = NULL, $language = NULL, $variabl
     // No override, return default string.
     switch ($key) {
       case 'login_one_time_subject':
-        return t('One-time login link for !username at !site', $variables, $options);
+        return t('One-time login link for [user:name] at [site:name]', $variables, $options);
       case 'login_one_time_body':
-        return t("!username,\n\nA request to give you a one-time login for your account has been made at !site.\n\nYou may now log in to !uri_brief by clicking on this link or copying and pasting it in your browser:\n\n!login_url\n\nThis is a one-time login, so it can be used only once.  It expires in two weeks and nothing will happen if it's not used.", $variables, $options);
+        return t("[user:name],\n\nA request to give you a one-time login for your account has been made at [site:name].\n\nYou may now log in to [site:url-brief] by clicking on this link or copying and pasting it in your browser:\n\n[user:login-one-time]\n\nThis is a one-time login, so it can be used only once.  It expires in two weeks and nothing will happen if it's not used.\n\n--  [site:name] team", $variables, $options);
     }
   }
 }
@@ -591,11 +594,20 @@ function login_one_time_mail_text($key, $path = NULL, $language = NULL, $variabl
  * Implements hook_mail().
  */
 function login_one_time_mail($key, &$message, $params) {
+   // This code handles a mixture of Drupal 6 legacy !variables and Drupal 7 tokens.
+
   $language = $message['language'];
   $path = &$params['path'];
   $variables = login_one_time_mail_tokens($params['account'], $language, $path);
-  $message['subject'] .= login_one_time_mail_text($key . '_subject', $path, $language, $variables);
-  $message['body'][] = login_one_time_mail_text($key . '_body', $path, $language, $variables);
+
+  $subject = login_one_time_mail_text($key . '_subject', $path, $language, $variables);
+  $body = login_one_time_mail_text($key . '_body', $path, $language, $variables);
+
+  $subject = token_replace($subject, array('user' => $params['account']));
+  $body = token_replace($body, array('user' => $params['account']));
+
+  $message['subject'] .= $subject;
+  $message['body'][] = $body;
 }
 
 /**
@@ -608,6 +620,8 @@ function login_one_time_mail($key, &$message, $params) {
  *  Language object to generate the tokens with.
  * @return
  *  Array of mappings from token names to values (for use with strtr()).
+ *
+ * @todo: To be deprecated.
  */
 function login_one_time_mail_tokens($account, $language, $path = NULL) {
   global $base_url;
