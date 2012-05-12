@@ -672,7 +672,7 @@ function login_one_time_page($uid, $timestamp, $hashed_pass) {
     $account = user_load($uid);
     if ($timestamp < $current && isset($account) && $account->status == 1) {
       // Deny one-time login to blocked accounts.
-      if (drupal_is_denied('user', $account->name) || drupal_is_denied('mail', $account->mail)) {
+      if (drupal_is_denied(ip_address())) {
         drupal_set_message(t('You have tried to use a one-time login for an account which has been blocked.'), 'error');
         drupal_goto("<front>");
       }
