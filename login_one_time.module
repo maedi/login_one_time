@@ -604,7 +604,7 @@ function login_one_time_mail($key, &$message, $params) {
   $body = login_one_time_mail_text($key . '_body', $path, $language, $variables);
 
   $subject = token_replace($subject, array('user' => $params['account']));
-  $body = token_replace($body, array('user' => $params['account']));
+  $body = token_replace($body, array('user' => $params['account'], 'path' => $path));
 
   $message['subject'] .= $subject;
   $message['body'][] = $body;
@@ -887,7 +887,7 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
       switch ($name) {
         // Simple key values on the node.
         case 'login-one-time':
-          $replacements[$original] = login_one_time_get_link($account);
+          $replacements[$original] = login_one_time_get_link($account, $data['path']);
           break;
       }
     }
