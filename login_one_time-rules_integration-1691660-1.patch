@@ -1,0 +1,88 @@
+From 365d4e7610a1f300331017f2ff6003714f998c01 Mon Sep 17 00:00:00 2001
+From: Matthew Grasmick <madmatter23@gmail.com>
+Date: Wed, 18 Jul 2012 14:12:45 -0400
+Subject: [PATCH] adding rules integration for send action
+
+---
+ login_one_time.rules.inc          |   27 ++++++++++++++++++++++++++-
+ login_one_time.rules_defaults.inc |   24 ++++++++++++++++++++++++
+ 2 files changed, 50 insertions(+), 1 deletions(-)
+ create mode 100644 login_one_time.rules_defaults.inc
+
+diff --git a/login_one_time.rules.inc b/login_one_time.rules.inc
+index aeb50ca..853e0b2 100644
+--- a/login_one_time.rules.inc
++++ b/login_one_time.rules.inc
+@@ -5,7 +5,6 @@
+  *
+  * @ingroup rules
+  */
+-
+ function login_one_time_rules_event_info() {
+   return array(
+     'login_one_time_used' => array(
+@@ -20,3 +19,29 @@ function login_one_time_rules_event_info() {
+     ),
+   );
+ }
++
++/**
++ * Implementation of hook_rules_action_info().
++ * @ingroup rules
++ */
++function login_one_time_rules_action_info() {
++  return array(
++    'login_one_time_send_mail' => array(
++      'label' => t('Send a login one-time email.'),
++      'parameter' => array(
++        'account' => array(
++          'type' => 'user',
++          'label' => t('Recipient User'),
++        ),
++        'path' => array(
++          'type' => 'uri',
++          'label' => t('Destination path'),
++          'optional' => TRUE,
++        ),
++      ),
++      'group' => t('User'),
++      'access callback' => 'user_access',
++      'access arguments' => array('send link to login one time'),
++    ),
++  );
++}
+\ No newline at end of file
+diff --git a/login_one_time.rules_defaults.inc b/login_one_time.rules_defaults.inc
+new file mode 100644
+index 0000000..1be864d
+--- /dev/null
++++ b/login_one_time.rules_defaults.inc
+@@ -0,0 +1,24 @@
++<?php
++/**
++ * Implements hook_default_rules_configuration().
++ */
++function login_one_time_default_rules_configuration() {
++  // Exported via Ctools.
++  $rules_login_one_time_send_mail_rule_component = '
++  { "rules_login_one_time_send_mail_rule_component" : {
++      "LABEL" : "Send one time login link",
++      "PLUGIN" : "action set",
++      "REQUIRES" : [ "login_one_time" ],
++      "USES VARIABLES" : {
++        "recipient" : { "label" : "Recipient", "type" : "user" },
++        "destination" : { "label" : "Destination", "type" : "uri" }
++      },
++      "ACTION SET" : [
++        { "login_one_time_send_mail" : { "account" : [ "recipient" ], "path" : [ "destination" ] } }
++      ]
++    }
++  }';
++  $rule = rules_import($rules_login_one_time_send_mail_rule_component);
++  $config[$rule->name] = $rule;
++  return $config;
++}
+\ No newline at end of file
+-- 
+1.7.5.4
+
