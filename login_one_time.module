@@ -929,3 +929,50 @@ function login_one_time_force_permissions() {
   }
   return FALSE;
 }
+
+/**
+ * Implements hook_action_info().
+ */
+function login_one_time_action_info() {
+  return array(
+    'login_one_time_send_mail_action' => array(
+      'label' => t('Send a login one-time email.'),
+      'type' => 'user',
+      'configurable' => TRUE,
+      'triggers' => array('any'),
+    ),
+  );
+}
+
+/**
+ * Generates settings form for login_one_time_send_mail_action().
+ */
+function login_one_time_send_mail_action_form($context) {
+  $form['path'] = login_one_time_select_widget();
+  $form['path']['#title'] = t('Select a destination path');
+  unset($form['path']['#options']['login_one_time[current]']);
+
+  return $form;
+}
+
+/**
+ * Submit handler for login_one_time_send_mail_action_form().
+ *
+ * Returns an associative array of values which will be available in the
+ * $context when an action is executed.
+ */
+function login_one_time_send_mail_action_submit($form, $form_state) {
+  return array('path' => $form_state['values']['path']);
+}
+
+/**
+ * Action function for login_one_time_send_mail_action.
+ *
+ * @param $entity
+ *   The user object being acted upon.
+ * @param $context
+ *   Array with parameters for this action: depends on the trigger.
+ */
+function login_one_time_send_mail_action(&$account, $context = array()) {
+  login_one_time_send_mail($account, $context['path']); 
+}
