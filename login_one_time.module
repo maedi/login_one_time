@@ -226,7 +226,8 @@ function login_one_time_button($username = NULL, $path = NULL, $select = FALSE, 
       // Woops, they've supplied an $account!
       $username = $username->name;
     }
-    return drupal_render(drupal_get_form('login_one_time_button_form', $username, $path, $select, $set_mail));
+    $form = drupal_get_form('login_one_time_button_form', $username, $path, $select, $set_mail);
+    return drupal_render($form);
   }
   return NULL;
 }
@@ -880,6 +881,7 @@ function login_one_time_block_view($delta = '') {
  */
 function login_one_time_tokens($type, $tokens, $data = array(), $options = array()) {
   $replacements = array();
+
   if ($type == 'user' && !empty($data['user'])) {
     $account = $data['user'];
 
@@ -888,7 +890,20 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
         // Simple key values on the node.
         case 'login-one-time':
           $replacements[$original] = login_one_time_get_link($account, $data['path']);
-          break;
+        break;
+      }
+    }
+  }
+  if ($type == 'comment' & !empty($data['comment'])) {
+    $comment = $data['comment'];
+
+    foreach ($tokens as $name => $original) {
+      switch($name) {
+        case 'login-one-time':
+          $node = node_load($comment->nid);
+          $author = user_load($node->uid);
+          $replacements[$original] = login_one_time_get_link($author, $node->url_alias . '#' . $comment->cid);
+        break;
       }
     }
   }
@@ -899,6 +914,7 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
  * Implements hook_token_info().
  */
 function login_one_time_token_info() {
+
   return array(
     'tokens' => array(
       'user' => array(
@@ -907,8 +923,25 @@ function login_one_time_token_info() {
           'description' => t("A one-time login link set to the configured default path."),
         ),
       ),
+      'comment' => array(
+        'login-one-time' => array(
+          'name' => t('Login one time link'),
+          'description' => t("A one-time login link for the commented node's author."),
+        ),
+      ),
     ),
   );
+}
+
+/**
+ * Implements hook_node_load().
+ *
+ * Add the URL alias to nodes
+ */
+function login_one_time_node_load($nodes, $types) {
+  foreach ($nodes as $node) {
+    $node->url_alias = url("node/$node->nid");
+  }
 }
 
 /**
@@ -974,5 +1007,5 @@ function login_one_time_send_mail_action_submit($form, $form_state) {
  *   Array with parameters for this action: depends on the trigger.
  */
 function login_one_time_send_mail_action(&$account, $context = array()) {
-  login_one_time_send_mail($account, $context['path']); 
+  login_one_time_send_mail($account, $context['path']);
 }
