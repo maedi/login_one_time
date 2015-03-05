@@ -900,9 +900,21 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
     foreach ($tokens as $name => $original) {
       switch($name) {
         case 'login-one-time':
+
           $node = node_load($comment->nid);
           $author = user_load($node->uid);
-          $replacements[$original] = login_one_time_get_link($author, $node->url_alias . '#' . $comment->cid);
+
+          if (module_exists('path')) {
+            $node_url = db_select('node')
+              ->condition('nid', $node->nid)
+              ->addField('url_alias', 'alias')
+              ->execute()
+              ->fetchField();
+          } else {
+            $node_url = 'node/' . $node->nid;
+          }
+
+          $replacements[$original] = login_one_time_get_link($author, $node_url . '#' . $comment->cid);
         break;
       }
     }
@@ -926,17 +938,6 @@ function login_one_time_token_info() {
     );
   }
   return $info;
-}
-
-/**
- * Implements hook_node_load().
- *
- * Add the URL alias to nodes
- */
-function login_one_time_node_load($nodes, $types) {
-  foreach ($nodes as $node) {
-    $node->url_alias = url("node/$node->nid");
-  }
 }
 
 /**
