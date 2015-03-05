@@ -1,3 +1,4 @@
 name = Login one time
 description = "Provides functionality for permitted users to send a one-time login link to other users."
 core = 7.x
+package = Authentication

@@ -915,22 +915,17 @@ function login_one_time_tokens($type, $tokens, $data = array(), $options = array
  */
 function login_one_time_token_info() {
 
-  return array(
-    'tokens' => array(
-      'user' => array(
-        'login-one-time' => array(
-          'name' => t('Login one time link'),
-          'description' => t("A one-time login link set to the configured default path."),
-        ),
-      ),
-      'comment' => array(
-        'login-one-time' => array(
-          'name' => t('Login one time link'),
-          'description' => t("A one-time login link for the commented node's author."),
-        ),
-      ),
-    ),
+  $info['tokens']['user']['login-one-time'] = array(
+    'name' => t('Login one time link'),
+    'description' => t("A one-time login link set to the configured default path."),
   );
+  if (module_exists('comment')) {
+    $info['tokens']['comment']['login-one-time'] = array(
+      'name' => t('Login one time link'),
+      'description' => t("A one-time login link for the commented node's author."),
+    );
+  }
+  return $info;
 }
 
 /**
